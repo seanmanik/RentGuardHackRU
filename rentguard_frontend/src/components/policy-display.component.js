@@ -67,9 +67,6 @@ export default class PolicyDisplay extends Component {
                         { this.policyList() }
                     </tbody>
                 </table>
-                <div className="text-center">
-                <button className="btn btn-primary btn-lg" onClick={this.policyList()}>Pay Rent</button>
-                </div>
             </div>
         );
     }

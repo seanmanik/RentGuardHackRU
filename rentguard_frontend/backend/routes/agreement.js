@@ -1,5 +1,6 @@
 const router = require('express').Router();
 let Agreement = require('../models/agreement.model');
+const { exec } = require('child_process');
 
 router.route('/').get((req, res) => {
     Agreement.find()
@@ -54,5 +55,28 @@ router.route('/update/:id').post((req, res) => {
         })
         .catch(err => res.status(400).json('Error: ' + err));
 });
+
+router.route('/checkPayment').post((req, res) => {
+    Agreement.findById(req.params.id)
+        .then(agreement => {
+            exec('starkli transaction-receipt --rpc https://starknet-sepolia.public.blastapi.io/rpc/v0_7 ' + req.body.hash, (error, stdout, stderr) => {
+                if (error) {
+                    console.error(`exec error: ${error}`);
+                    return res.status(500).json({ error: 'Internal server error' });
+                }
+                try {
+                    const response = JSON.parse(stdout); // Parse the stdout to JSON
+                    const fieldToRead = response.execution_status; // Access the desired field by its name
+                    console.log(`Value of execution_status: ${fieldToRead}`);
+                    res.status(200).json({ success: fieldToRead == "SUCCEEDED" });
+                } catch (parseError) {
+                    console.error(`Error parsing JSON: ${parseError}`);
+                    res.status(500).json({ error: 'Internal server error' });
+                }
+            });
+        })
+        .catch(err => res.status(400).json('Error: ' + err));
+});
+
 
 module.exports = router;

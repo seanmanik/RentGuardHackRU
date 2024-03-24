@@ -2,45 +2,30 @@ import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { connect, disconnect } from '@argent/get-starknet';
-import { Provider } from 'starknet';
-import { Contract } from 'starknet';
 
-const Agreement = props => (
-    <tr>
-        <td className="align-middle">{props.agreement.tenant}</td>
-        <td className="align-middle">${props.agreement.rent}</td>
-        <td className="align-middle">{props.agreement.address}</td>
-        <td className="align-middle">${props.agreement.rentHiked}</td>
-        {/* <td>
-            <Link to={"/edit/"+props.agreement._id}>Edit</Link> | <a href="#" onClick={() => { props.payRent(props.agreement._id) }}>Pay rent</a>
-        </td> */}
-        <td className="align-middle">
-            {!props.agreement.rentPaid ? (
-                <button className="btn btn-danger ml-2" onClick={() => props.payRent(props.agreement._id)}>Pay Rent</button>
-            ) : (
-                <button className="btn btn-success">Rent Paid</button>
-            )}
-        </td>
-        <td>
-            <img src={props.agreement.image} alt="Agreement" className="rounded" style={{ width: '200px', height: '100px' }} />
-        </td>
-    </tr>
-)
+
 
 export default class AgreementList extends Component {
     constructor(props) {
         super(props);
 
+        this.onChangeHash = this.onChangeHash.bind(this);
         this.payRent =  this.payRent.bind(this);
 
         this.state = {agreements: [], 
             connected: false, 
             account: null, 
             address: '', 
-            contractAddress: "", 
-            contractAbi: "",
-            contract: null,
             landlordAddress: "",
+            tenant: "",
+            landlord: "",
+            rent: 0,
+            address: "",
+            image: "",
+            id: "",
+            rentPaid: false,
+            hash: "",
+            rentHiked: 0
         };
     }
 
@@ -48,6 +33,15 @@ export default class AgreementList extends Component {
         axios.get('http://localhost:5000/agreement')
         .then(response => {
             this.setState({ agreements: response.data })
+            this.setState({ image: response.data[0].image })
+            this.setState({ tenant: response.data[0].tenant })
+            this.setState({ landlord: response.data[0].landlord })
+            this.setState({ rent: response.data[0].rent })
+            this.setState({ address: response.data[0].address })
+            this.setState({ id: response.data[0]._id })
+            this.setState({ rentPaid: response.data[0].rentPaid })
+            this.setState({ hash: "" })
+            this.setState({ rentHiked: response.data[0].rentHiked })
         })
         .catch((error) => {
             console.log(error);
@@ -58,35 +52,7 @@ export default class AgreementList extends Component {
                 webWalletUrl: "https://web.argent.xyz"
             });
             if (connection && connection.isConnected) {
-                this.setState({connected: true, account: connection.account, address: connection.selectedAddress});
-                this.setState({
-                        landlordAddress:"0x07C0246Cb97D624db76058690Fc00999512d56e8b06550f5aC63462996f416E8",
-                        contractAddress:"0x0534a6311f9ed35b11484ac6ab76abdfd0775294721f7ec7ffdcf890f094ca9c",
-                        contractAbi: JSON.stringify([{
-                        "name": "transfer",
-                        "type": "function",
-                        "inputs": [
-                        {
-                            "name": "recipient",
-                            "type": "core::starknet::contract_address::ContractAddress"
-                        },
-                        {
-                            "name": "amount",
-                            "type": "core::integer::u256"
-                        }
-                        ],
-                        "outputs": [
-                        {
-                            "type": "core::bool"
-                        }
-                        ],
-                        "state_mutability": "external"
-                    }])
-                    }
-                ); 
-                const contract = new Contract(this.state.contractAbi, this.state.contractAddress, this.account);
-                this.setState({contract: contract});
-                
+                console.log(connection);                
             
             }
 
@@ -96,19 +62,41 @@ export default class AgreementList extends Component {
 
     }
 
+    onChangeHash(e) {
+        this.setState({
+            hash: e.target.value
+        });
+    }
+
+
     async payRent(id) {
         try {
-            if (this.state.connected && this.state.contract) {
-                let rent = 0;
-                axios.get(`http://localhost:5000/agreement/${id}`)
-                .then(response => {
-                    rent = response.data.rent;
-                    console.log(response.data);
-                })
-                const result = await this.state.contract.transfer(this.state.landlordAddress, rent* 1000);
-                console.log(result);
-
-            }
+            axios.post(`http://localhost:5000/agreement/checkPayment/`, { hash: this.state.hash })
+            .then(response => {
+                if (response.data.success) {
+                    this.setState({ rentPaid: true })
+                    const agreement ={
+                        rentPaid: true,
+                        tenant: this.state.tenant,
+                        landlord: this.state.landlord,
+                        rent: this.state.rent,
+                        address: this.state.address,
+                        image: this.state.image,
+                        rentHiked: this.state.rentHiked
+                    }
+                    console.log(agreement);
+                    try {
+                        axios.post(`http://localhost:5000/agreement/update/${id}`, agreement)
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+            })
+            axios.get(`http://localhost:5000/agreement/${id}`)
+            .then(response => {
+                this.setState({ id: response.data.id })
+            })
+            
         } catch (error) {
             console.error(error);
         }
@@ -116,33 +104,66 @@ export default class AgreementList extends Component {
 
     }
 
-    agreementList() {
-        return this.state.agreements.map(currentagreement => {
-            return <Agreement agreement={currentagreement}  payRent={this.payRent} key={currentagreement._id}/>;
-        })
-    }
-
     render() {
         return (
-            <div>
+            
+            <div className="container mt-4">
                 <div className="text-center">
                     <img src="https://i.imgur.com/FsRZ6oq.png" alt="Policy Image" className="rounded" style={{ width: '30%', height: 'auto' }} />    
                 </div>
-                <h3>Agreements</h3>
-                <table className="table">
-                    <thead className="thead-light">
-                        <tr>
-                            <th >Tenant</th>
-                            <th >Rent</th>
-                            <th >Address</th>
-                            <th >Rent Hiked</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        { this.agreementList() }
-                    </tbody>
-                </table>
+                <div className="row">
+                    <div className="col-md-6">
+                        <div className="details-container p-4">
+                            <h3>Welcome Back, {this.state.tenant}</h3>
+                            <h4>{this.state.address}</h4>
+                            <div className="property-details">
+                                <p><strong>Rent Due:</strong> ${this.state.rent}</p>
+                                {/* Add other fields as needed */}
+                                {!this.state.rentPaid ? (
+                                    <>
+                                        <input type="text" className="form-control" placeholder="Enter hash" aria-label="Enter amount" aria-describedby="basic-addon2" value={this.state.hash} onChange={this.onChangeHash}/>
+                                        <button className="btn btn-danger" onClick={() => this.payRent(this.state.id)}>Confirm Payment</button>
+
+                                    </>
+
+                                ) : (
+                                    <button className="btn btn-success">Rent Paid</button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-6">
+                        <img src={this.state.image} alt="Agreement" className="img-fluid rounded" style={{ maxHeight: '400px' }} />
+                    </div>
+                </div>
+                <div className="row mt-4">
+                    <div className="col-md-12">
+                        <div id="carouselExampleIndicators" className="carousel slide" data-ride="carousel">
+                            <div className="carousel-inner">
+                                <div className="carousel-item active">
+                                    <img src="https://plus.unsplash.com/premium_photo-1663126298656-33616be83c32?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" className="d-block w-100" alt="Image 1" />
+                                </div>
+                                <div className="carousel-item">
+                                    <img src="https://images.unsplash.com/photo-1615874959474-d609969a20ed?q=80&w=2360&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" className="d-block w-100" alt="Image 2" />
+                                </div>
+                                <div className="carousel-item">
+                                    <img src="https://images.unsplash.com/photo-1560185893-a55cbc8c57e8?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" className="d-block w-100" alt="Image 3" />
+                                </div>
+                            </div>
+                            <a className="carousel-control-prev" href="#carouselExampleIndicators" role="button" data-slide="prev">
+                                <span className="carousel-control-prev-icon" aria-hidden="true"></span>
+                                <span className="sr-only">Previous</span>
+                            </a>
+                            <a className="carousel-control-next" href="#carouselExampleIndicators" role="button" data-slide="next">
+                                <span className="carousel-control-next-icon" aria-hidden="true"></span>
+                                <span className="sr-only">Next</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }
+    
+    
 }

@@ -41,13 +41,30 @@ export default class EditAgreement extends Component {
         this.state = {agreements: [], 
             targetAgreement: {}, 
             maxHikePercentage: 0,
-            newRentValue: 0};
+            newRentValue: 0,
+            tenant: "",
+            landlord: "",
+            rent: 0,
+            address: "",
+            image: "",
+            rentHiked: false,
+            _id: ""
+        };
+
     }
 
     componentDidMount() {
         axios.get('http://localhost:5000/agreement')
         .then(response => {
             this.setState({ agreements: response.data })
+            this.setState({ tenant: response.data[0].tenant,
+                            landlord: response.data[0].landlord,
+                            rent: response.data[0].rent,
+                            address: response.data[0].address,
+                            image: response.data[0].image,
+                            rentHiked: response.data[0].rentHiked,
+                            _id: response.data[0]._id
+                        })
         })
         .catch((error) => {
             console.log(error);
@@ -109,32 +126,75 @@ export default class EditAgreement extends Component {
     
     }
 
-    agreementList() {
-        return this.state.agreements.map(currentagreement => {
-            return <Agreement agreement={currentagreement} onRentChange={this.handleRentChange} newRentValue={this.state.newRentValue} onSubmit={this.onSubmit} key={currentagreement._id}/>;
-        })
-    }
 
     render() {
         return (
-            <div>
+            
+            <div className="container mt-4">
                 <div className="text-center">
                     <img src="https://i.imgur.com/FsRZ6oq.png" alt="Policy Image" className="rounded" style={{ width: '30%', height: 'auto' }} />    
                 </div>
-                <h3>Rent Hikes Capped at {this.state.maxHikePercentage}%. (Rent Stabilization Policy)</h3>
-                <table className="table">
-                    <thead className="thead-light">
-                        <tr>
-                            <th >Landlord</th>
-                            <th >Rent</th>
-                            <th >Address</th>
-                            <th >Rent Hiked</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        { this.agreementList() }
-                    </tbody>
-                </table>
+
+                <h3 >Rent Hikes Capped at {this.state.maxHikePercentage}%. (Rent Stabilization Policy)</h3>
+                
+                <div className="row">
+                    <div className="col-md-6">
+                        <div className="details-container p-4">
+                            <h3>Welcome Back, {this.state.landlord}</h3>
+                            <h4>{this.state.address}</h4>
+                            <div className="property-details">
+                                <p><strong>Current rent:</strong> ${this.state.rent}</p>
+                                <p><strong>Maximum rent hike:</strong>${Math.round(this.state.rent * (this.state.maxHikePercentage) / 100)}</p>
+                                {/* Add other fields as needed */}
+                                
+                                {!this.state.rentHiked ? (
+                                    <>
+                                    <input
+                                    type="number"
+                                    value={this.state.newRentValue}
+                                    onChange={(e) => this.handleRentChange(e.target.value)}
+                                    />                                        
+                                    <button className="btn btn-danger" onClick={() => this.onSubmit(this.state._id, this.state.newRentValue)}>Update Rent</button>
+                                    
+                                    </>
+
+                                ) : (
+                                    <button className="btn btn-success">Rent Raised</button>
+                                )}
+                                
+
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-6">
+                        <img src="https://plus.unsplash.com/premium_photo-1672252617591-cfef963eeefa?q=80&w=2342&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Agreement" className="img-fluid rounded" style={{ maxHeight: '400px' }} />
+                    </div>
+                </div>
+                <div className="row mt-4">
+                    <div className="col-md-12">
+                        <div id="carouselExampleIndicators" className="carousel slide" data-ride="carousel">
+                            <div className="carousel-inner">
+                                <div className="carousel-item active">
+                                    <img src="https://images.unsplash.com/photo-1616594039964-ae9021a400a0?q=80&w=2360&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" className="d-block w-100" alt="Image 1" />
+                                </div>
+                                <div className="carousel-item">
+                                    <img src="https://images.unsplash.com/photo-1615874959474-d609969a20ed?q=80&w=2360&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" className="d-block w-100" alt="Image 2" />
+                                </div>
+                                <div className="carousel-item">
+                                    <img src="https://images.unsplash.com/photo-1560185893-a55cbc8c57e8?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" className="d-block w-100" alt="Image 3" />
+                                </div>
+                            </div>
+                            <a className="carousel-control-prev" href="#carouselExampleIndicators" role="button" data-slide="prev">
+                                <span className="carousel-control-prev-icon" aria-hidden="true"></span>
+                                <span className="sr-only">Previous</span>
+                            </a>
+                            <a className="carousel-control-next" href="#carouselExampleIndicators" role="button" data-slide="next">
+                                <span className="carousel-control-next-icon" aria-hidden="true"></span>
+                                <span className="sr-only">Next</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }
